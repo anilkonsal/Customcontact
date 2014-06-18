@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+To change this license header, choose License Headers in Project Properties.
+To change this template file, choose Tools | Templates
+and open the template in the editor.
+-->
+
+<config>
+    <modules>
+        <Tii_Customcontact>
+            <version>0.0.1</version>
+        </Tii_Customcontact>
+    </modules>
+    <frontend>
+        <routers>
+            <contacts>
+                <args>
+                    <modules>
+                        <tii_customcontact before="Mage_Contacts">Tii_Customcontact</tii_customcontact>
+                    </modules>
+                </args>
+            </contacts>
+        </routers>
+        <layout>
+            <updates>
+                <tii_customcontact>
+                    <file>tii_customcontact.xml</file>
+                </tii_customcontact>
+            </updates>
+        </layout>
+    </frontend>
+</config>
+    
