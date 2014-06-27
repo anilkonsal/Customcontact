@@ -28,10 +28,20 @@ class Tii_Customcontact_IndexController extends Mage_Contacts_IndexController {
     public function indexAction() {
         $this->loadLayout();
         $this->getLayout()->getBlock('contactForm')
-                ->setFormAction(Mage::getUrl('*/*/post'));
-
+                ->setFormAction(Mage::getUrl('*/*/post')); 
+        
+        $customerSession = Mage::getSingleton('customer/session');        
+        if (is_object($customerSession) && count($customerSession->getData('messages'))) {        
+           $msgCount = count($customerSession->getData('messages')->getErrors());          
+            if (!$msgCount) {
+                Mage::getSingleton('core/session')->setData('contactForm', NULL);
+            }
+        }
+        
         $this->_initLayoutMessages('customer/session');
         $this->_initLayoutMessages('catalog/session');
+           
+        
         $this->renderLayout();
     }
 
@@ -39,6 +49,7 @@ class Tii_Customcontact_IndexController extends Mage_Contacts_IndexController {
         $post = $this->getRequest()->getPost();
 
         if ($post) {
+            Mage::getSingleton('core/session')->setData('contactForm', new Varien_Object($post));
             $translate = Mage::getSingleton('core/translate');
             /* @var $translate Mage_Core_Model_Translate */
             $translate->setTranslateInline(false);
@@ -79,29 +90,28 @@ class Tii_Customcontact_IndexController extends Mage_Contacts_IndexController {
                 $mailTemplate = Mage::getModel('core/email_template');
                 /* @var $mailTemplate Mage_Core_Model_Email_Template */
                 $fname = '';
-                for ($i = 0; $i < count($_FILES['attachment']['name']); $i++) {
 
-                    if (in_array($_FILES['attachment']['type'][$i], $acceptable) && (isset($_FILES['attachment']['name'][$i])) && $_FILES['attachment']['name'][$i] != '') {
-                        $tmpFilePath = $_FILES['attachment']['tmp_name'][$i];
-                        if ($tmpFilePath != "") {
-                            $fname = $_FILES['attachment']['name'][$i];
-                            $fileExt = strtolower(substr(strrchr($fname, "."), 1));
-                            $fileNamewoe = rtrim($fname, $fileExt);
-                            $fname = preg_replace('/\s+', '', $fileNamewoe) . time() . '.' . $fileExt;
-                            $newFilePath = $path . DS . $fname;
-                            if (move_uploaded_file($tmpFilePath, $newFilePath)) {
-                                $attachmentFilePath = Mage::getBaseDir('media') . DS . 'contacts' . DS . $fname;
-                                $at = $mailTemplate->getMail()->createAttachment(file_get_contents($attachmentFilePath));
-                                $at->disposition = Zend_Mime::DISPOSITION_INLINE;
-                                $at->encoding = Zend_Mime::ENCODING_BASE64;
-                                $at->filename = $fname;
+                for ($i = 0; $i < count($_FILES['attachment']['name']); $i++) {
+                    if (is_uploaded_file($_FILES['attachment']['tmp_name'][$i])) {
+                        if (in_array($_FILES['attachment']['type'][$i], $acceptable) && (isset($_FILES['attachment']['name'][$i])) && $_FILES['attachment']['name'][$i] != '') {
+                            $tmpFilePath = $_FILES['attachment']['tmp_name'][$i];
+                            if ($tmpFilePath != "") {
+                                $fname = $_FILES['attachment']['name'][$i];
+                                $newFilePath = $path . DS . $fname;
+                                if (move_uploaded_file($tmpFilePath, $newFilePath)) {
+                                    $attachmentFilePath = Mage::getBaseDir('media') . DS . 'contacts' . DS . $fname;
+                                    $at = $mailTemplate->getMail()->createAttachment(file_get_contents($attachmentFilePath));
+                                    $at->disposition = Zend_Mime::DISPOSITION_INLINE;
+                                    $at->encoding = Zend_Mime::ENCODING_BASE64;
+                                    $at->filename = $fname;
+                                }
                             }
+                        } else {
+                            $error = true;
+                            Mage::getSingleton('customer/session')->addError(Mage::helper('contacts')->__('Incorrect Image file format. Please, use image files only'));
+                            $this->_redirect('*/*/');
+                            return;
                         }
-                    } else {
-                        $error = true;
-                        Mage::getSingleton('customer/session')->addError(Mage::helper('contacts')->__('Incorrect Image file format. Please, use image files only'));
-                        $this->_redirect('*/*/');
-                        return;
                     }
                 }
 
@@ -122,6 +132,7 @@ class Tii_Customcontact_IndexController extends Mage_Contacts_IndexController {
                 $translate->setTranslateInline(true);
 
                 Mage::getSingleton('customer/session')->addSuccess(Mage::helper('contacts')->__('Your inquiry was submitted and will be responded to as soon as possible. Thank you for contacting us.'));
+                Mage::getSingleton('core/session')->setData('contactForm', NULL);
                 $this->_redirect('*/*/');
 
                 return;
